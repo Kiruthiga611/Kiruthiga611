@@ -1,0 +1,43 @@
+from bs4 import BeautifulSoup
+import requests
+import pandas as pd
+import sqlite3
+
+try:
+   response=requests.get('https://en.wikipedia.org/wiki/List_of_largest_companies_by_revenue')
+   soup=BeautifulSoup(response.text,'html.parser')
+   companies=soup.find('table',class_="wikitable sortable sticky-header-multi sort-under")
+   rows= companies.find_all('tr')
+   company_list={"company_rank":[],"company_name":[],"company_industry":[],"company_revenue":[],"company_profit":[],"company_employees":[],"company_hq":[]}
+   for row in rows[1:]:
+        columns = row.find_all('td')
+        if columns:
+            rank = row.find('th')
+            if rank:
+                rank = rank.text.strip()
+            name=columns[0].find('a').text.strip()
+            industry=columns[1].text.strip()
+            revenue=columns[2].text.strip()
+            profit=columns[3].text.strip()
+            employees=columns[4].text.strip()
+            headquarters=columns[5].text.strip()
+            company_list["company_rank"].append(rank)
+            company_list["company_name"].append(name)
+            company_list["company_industry"].append(industry)
+            company_list["company_revenue"].append(revenue)
+            company_list["company_profit"].append(profit)
+            company_list["company_employees"].append(employees)
+            company_list["company_hq"].append(headquarters)
+except Exception as e :
+   print(e)
+
+df= pd.DataFrame(data=company_list)
+print(df)
+connection=sqlite3.connect("test_db")
+cursor=connection.cursor()
+querry="create table topcompanies(company_rank,company_name,company_industries,company_revenue,company_profit,company_employees,company_hq)"
+cursor.execute(querry)
+for i in range(len(df)):
+   cursor.execute("insert into topcompanies values(?,?,?,?,?,?,?)",df.iloc[i].values)
+connection.commit()
+connection.close()
